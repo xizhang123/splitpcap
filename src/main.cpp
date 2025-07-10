@@ -36,7 +36,7 @@ typedef struct __flow_tuple{
 	{
 		char tuples[64] = { 0 };
 		if (_src_ip > _dst_ip)
-		//È·±£C->SºÍS->CµÄÔª×éĞÅÏ¢ÊÇÒ»ÖÂµÄ
+		//ç¡®ä¿C->Så’ŒS->Cçš„å…ƒç»„ä¿¡æ¯æ˜¯ä¸€è‡´çš„
 		{
 			swap(_src_ip, _dst_ip);
 			swap(_src_port, _dst_port);
@@ -64,7 +64,7 @@ flow_tuple gather_flow_tuple( const unsigned char * data){
 	unsigned char protocol = 0;
 
 	if (eth.type == 0x0800)
-		//ip Ğ­Òé
+		//ip åè®®
 	{
 		ip_header ip = ip_parser(data + sizeof(ethII_header));
 		src_ip = ip.saddr;
@@ -87,7 +87,7 @@ flow_tuple gather_flow_tuple( const unsigned char * data){
 		}
 	}
 	else{
-		//·ÇIPĞ­Òé; °ÑMACµØÖ·¸ß4Î»×÷ÎªIP
+		//éIPåè®®; æŠŠMACåœ°å€é«˜4ä½ä½œä¸ºIP
 		src_ip = * ((unsigned int *) eth.source);
 		dst_ip = *((unsigned int *) eth.destination);
 	}
@@ -97,7 +97,7 @@ flow_tuple gather_flow_tuple( const unsigned char * data){
 int splitpcaps(char *pcapname, char * dst_dir, int piece_num=10)
 {
 
-	pcap_t * rdpcap;//´ò¿ªpcapµÄÖ¸Õë
+	pcap_t * rdpcap;//æ‰“å¼€pcapçš„æŒ‡é’ˆ
 	
 	char errBUF[4096] = { 0 };
 	rdpcap = pcap_open_offline(pcapname,errBUF);
@@ -107,12 +107,12 @@ int splitpcaps(char *pcapname, char * dst_dir, int piece_num=10)
 		return -1;
 	}
 
-	//´´½¨Ä¿Â¼
+	//åˆ›å»ºç›®å½•
 	char mkdir_cmd[256] = { 0 };
 	sprintf(mkdir_cmd, "mkdir %s", dst_dir);
 	system(mkdir_cmd);
 
-	//ÒÀ´Î´´½¨ //Ğ´pcapµÄÖ¸Õë
+	//ä¾æ¬¡åˆ›å»º //å†™pcapçš„æŒ‡é’ˆ
 	vector<pcap_dumper_t *> wtpcap_dumps;	
 	vector<pcap_t *> _wtpcaps;
 
@@ -120,12 +120,12 @@ int splitpcaps(char *pcapname, char * dst_dir, int piece_num=10)
 	{
 		char dstfile[256] = { 0 };
 		sprintf(dstfile, "%s/%d.pcap", dst_dir, i);
-		pcap_t * wtpcap = pcap_open_dead(DLT_ETH, 65535);//µÚÒ»¸ö²ÎÊıÊÇ linktype,ÒÔÌ«ÍøµÄlinktypeÊÇ1;
+		pcap_t * wtpcap = pcap_open_dead(DLT_ETH, 65535);//ç¬¬ä¸€ä¸ªå‚æ•°æ˜¯ linktype,ä»¥å¤ªç½‘çš„linktypeæ˜¯1;
 		pcap_dumper_t * wtpcap_dump = pcap_dump_open(wtpcap, dstfile);
 		_wtpcaps.push_back(wtpcap);
 		wtpcap_dumps.push_back(wtpcap_dump);
 		
-		//¼ì²éÊÇ·ñ´ò¿ª³É¹¦
+		//æ£€æŸ¥æ˜¯å¦æ‰“å¼€æˆåŠŸ
 		if (wtpcap == NULL || wtpcap_dump == NULL)
 		{
 			printf("Error when create dst file:%s\n", dstfile);
@@ -140,19 +140,20 @@ int splitpcaps(char *pcapname, char * dst_dir, int piece_num=10)
 		pcap_pkthdr pktheader;
 		const u_char *pktdata = pcap_next(rdpcap, &pktheader);
 		if (pktdata != NULL)
-			//pcap´æÔÚpcapketÎ´´¦Àí
+			//pcapå­˜åœ¨pcapketæœªå¤„ç†
 		{
 			//printf("Packet :%d\n", nb_transfer);
 
-			//¿½±´packetËùÓĞÄÚÈİ
+			//æ‹·è´packetæ‰€æœ‰å†…å®¹
 			display((unsigned char *)pktdata, pktheader.len);
 			pcap_pkthdr new_pkthdr = pktheader;
-			u_char new_data[2000] = { 0};
+			//å¢åŠ æ•°ç»„é•¿åº¦ï¼Œé¿å…pktheader.lenï¼Œå†…å­˜æ‹·è´æ—¶æ ˆæº¢å‡ºã€‚
+			u_char new_data[65536] = { 0 };
 			memcpy(new_data, pktdata, new_pkthdr.len);
-			//»ñÈ¡ÎåÔª×éĞÅÏ¢,²¢¶ÔÎåÔª×é½øĞĞ¹şÏ£
+			//è·å–äº”å…ƒç»„ä¿¡æ¯,å¹¶å¯¹äº”å…ƒç»„è¿›è¡Œå“ˆå¸Œ
 			flow_tuple tuple = gather_flow_tuple(pktdata);
 
-			//Ğ´Èë¶ÔÓ¦µÄĞ¡pcapÖĞ
+			//å†™å…¥å¯¹åº”çš„å°pcapä¸­
 			pcap_dumper_t * wtpcap_dump = wtpcap_dumps[tuple._hash % piece_num];
 			pcap_dump((u_char*) wtpcap_dump, &new_pkthdr, new_data);
 			nb_transfer++;
@@ -168,7 +169,7 @@ int splitpcaps(char *pcapname, char * dst_dir, int piece_num=10)
 			break;
 		}
 	}
-	//¹Ø±Õpcap¾ä±ú
+	//å…³é—­pcapå¥æŸ„
 	for (int i = 0; i < wtpcap_dumps.size(); i++){
 		pcap_dump_flush(wtpcap_dumps[i]);
 		if (wtpcap_dumps[i])
